@@ -142,12 +142,20 @@ function buildWidget(message, family) {
     stack.addSpacer();
   } else {
     // Default: accessoryRectangular (also a safe fallback for unknown families).
-    widget.setPadding(2, 4, 2, 4);
-    const t = widget.addText(message);
+    // The slot has a fixed frame, but by default text hugs its own width. To
+    // make content span the FULL width, put the text in a horizontal stack and
+    // add a trailing spacer: the spacer eats all leftover space, forcing the
+    // stack (and thus the text's wrap width) out to the edges.
+    widget.setPadding(2, 0, 2, 0);
+    const row = widget.addStack();
+    row.layoutHorizontally();
+    const t = row.addText(message);
     t.font = Font.systemFont(CONFIG.FONT_SIZE);
     t.textColor = color;
     t.lineLimit = CONFIG.LINE_LIMIT;
     t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
+    t.leftAlignText();
+    row.addSpacer(); // expand the row to the full available width
   }
 
   return widget;
