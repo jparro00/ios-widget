@@ -1,0 +1,10 @@
+{
+  "name": "scriptable-rotating-messages-widget",
+  "version": "1.0.0",
+  "description": "Scriptable (iOS) lock-screen widget that shows rotating text messages/quotes.",
+  "private": true,
+  "scripts": {
+    "test": "node test/rotation.test.js"
+  },
+  "license": "MIT"
+}
