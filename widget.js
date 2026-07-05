@@ -154,25 +154,29 @@ function buildWidget(message, family) {
 
   const color = new Color(CONFIG.TEXT_COLOR);
 
-  // Split the message into styled runs from inline markup (**bold**, *italic*,
-  // <b>, <i>). Uniform (single-run) messages can wrap across lines; mixed-style
-  // messages render on one horizontal line since WidgetKit can't wrap runs.
-  const runs = parseRuns(message);
-  const uniform = runs.length <= 1;
+  // Reduce inline markup (**bold**, *italic*, <b>, <i>) to a WHOLE-MESSAGE style
+  // and strip the markers. WidgetKit has no attributed-string API, so it cannot
+  // wrap a line that mixes styles — trying to do so truncates ("Progress ov…")
+  // and wastes the other lines. So emphasis applies to the entire message, which
+  // lets it wrap across all available lines and never truncate mid-word.
+  const style = mergedStyle(parseRuns(message));
+  const text = style.text;
 
   if (family === "accessoryInline") {
-    // Single line next to the clock. Inline is always one line, so a run stack
-    // is safe here regardless of mixed styling.
-    renderRunRow(widget, runs, CONFIG.INLINE_FONT_SIZE, color, 1, "left");
+    // Single line rendered next to the clock; keep it terse.
+    const t = widget.addText(text);
+    styleText(t, style, CONFIG.INLINE_FONT_SIZE, color);
+    t.lineLimit = 1;
+    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
   } else if (family === "accessoryCircular") {
-    // Tiny circular slot; center a very short snippet (markup stripped/uniform).
+    // Tiny circular slot; center a very short snippet.
     widget.setPadding(2, 2, 2, 2);
     const stack = widget.addStack();
     stack.addSpacer();
     const inner = stack.addStack();
     inner.addSpacer();
-    const t = inner.addText(plainText(runs));
-    styleText(t, mergedStyle(runs), CONFIG.FONT_SIZE - 3, color);
+    const t = inner.addText(text);
+    styleText(t, style, CONFIG.FONT_SIZE - 3, color);
     t.lineLimit = 2;
     t.minimumScaleFactor = 0.5;
     t.centerAlignText();
@@ -180,41 +184,20 @@ function buildWidget(message, family) {
     stack.addSpacer();
   } else {
     // Default: accessoryRectangular (also the fallback for unknown families).
+    // One wrapping text element filling the full frame across up to LINE_LIMIT
+    // lines. The trailing spacer forces the row out to the full width.
     widget.setPadding(0, 0, 0, 0);
-    if (uniform) {
-      // One style -> a single text element that wraps to fill the full frame.
-      const row = widget.addStack();
-      row.layoutHorizontally();
-      const t = row.addText(plainText(runs));
-      styleText(t, mergedStyle(runs), CONFIG.FONT_SIZE, color);
-      t.lineLimit = CONFIG.LINE_LIMIT;
-      t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
-      t.leftAlignText();
-      row.addSpacer(); // expand the row to the full available width
-    } else {
-      // Mixed styles -> one horizontal line of runs (can't wrap), scaled to fit.
-      renderRunRow(widget, runs, CONFIG.FONT_SIZE, color, 1, "left");
-    }
+    const row = widget.addStack();
+    row.layoutHorizontally();
+    const t = row.addText(text);
+    styleText(t, style, CONFIG.FONT_SIZE, color);
+    t.lineLimit = CONFIG.LINE_LIMIT;
+    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
+    t.leftAlignText();
+    row.addSpacer();
   }
 
   return widget;
-}
-
-/**
- * Render an array of styled runs as a single horizontal line, then a spacer so
- * the row expands to the full available width.
- */
-function renderRunRow(widget, runs, size, color, lineLimit, align) {
-  const row = widget.addStack();
-  row.layoutHorizontally();
-  for (const run of runs) {
-    const t = row.addText(run.text);
-    styleText(t, run, size, color);
-    t.lineLimit = lineLimit;
-    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
-    if (align === "left") t.leftAlignText();
-  }
-  row.addSpacer();
 }
 
 // ============================================================================

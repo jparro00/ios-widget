@@ -209,29 +209,31 @@ message, which is what lets the widget be stateless.
 
 ### Bold & italic
 
-Two ways to style text, and they combine:
+Styling is applied to the **whole message**, and there are two ways to set it,
+which combine:
 
 1. **Whole-widget defaults** — `BOLD` and `ITALIC` in CONFIG apply to every
    message. `ITALIC: true` is a nice default for quotes.
-2. **Inline markup inside a message** — put the markers right in your JSON/message
-   strings:
+2. **Inline markup inside a message** — add a marker anywhere in the string and
+   the whole message takes that emphasis, with the markers stripped:
 
    | Write this | Renders as |
    | --- | --- |
-   | `Progress over **perfection**.` | Progress over **perfection**. |
-   | `You've done *hard things* before.` | You've done *hard things* before. |
-   | `Focus on the <b>next right thing</b>.` | bold via HTML tag |
-   | `Stay <i>steady</i>.` | italic via HTML tag |
+   | `Progress over **perfection**.` | the whole line **bold** |
+   | `You've done *hard things* before.` | the whole line *italic* |
+   | `Focus on the <b>next right thing</b>.` | whole line bold (HTML tag) |
+   | `Stay <i>steady</i>.` | whole line italic (HTML tag) |
 
    Supported markers: `**bold**`, `*italic*`, `<b>…</b>`, `<strong>…</strong>`,
    `<i>…</i>`, `<em>…</em>`.
 
-**One real limitation:** iOS widgets have no attributed-string / rich-text API, so
-a message that **mixes** styles (some bold, some not) renders on a **single line**
-that shrinks to fit — it can't wrap across multiple lines. A message that is
-*entirely* one style (or plain) wraps normally across up to `LINE_LIMIT` lines. So
-for multi-line quotes, prefer whole-message styling (`ITALIC: true`) over
-mid-sentence bold.
+> **Why whole-message and not per-word?** iOS widgets have **no attributed-string
+> / rich-text API**. A line that mixes styles (one bold word among plain text)
+> *cannot wrap* — WidgetKit forces it onto a single line and truncates it
+> (`Progress ov… perfection`), wasting the other lines. Applying the emphasis to
+> the entire message keeps it wrapping cleanly across up to `LINE_LIMIT` lines and
+> never truncates mid-word. If you genuinely need a single emphasized word, the
+> only place it survives is the one-line `accessoryInline` family.
 
 **Color note:** iOS forces lock screen widgets to a monochrome/tinted look, so
 `TEXT_COLOR` and any custom colors won't show through — only weight/italic do.
