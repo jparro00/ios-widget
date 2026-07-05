@@ -20,9 +20,11 @@
 // ============================================================================
 const CONFIG = {
   // URL returning a JSON array of strings, e.g. ["Stay steady.", "Breathe."]
-  // Replace with your own Gist raw URL / S3 object / any static host.
+  // Default: messages.json hosted from this repo via GitHub's raw endpoint
+  // (works with no extra setup). Swap for your GitHub Pages URL, Gist, S3, or
+  // any static host — see README "Hosting the JSON".
   MESSAGES_URL:
-    "https://gist.githubusercontent.com/USERNAME/GIST_ID/raw/messages.json",
+    "https://raw.githubusercontent.com/jparro00/ios-widget/claude/scriptable-lockscreen-widget-jui7kx/messages.json",
 
   // How often (in minutes) the displayed message advances to the next one.
   // iOS decides *when* to actually refresh; this only controls which message

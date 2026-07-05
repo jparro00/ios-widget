@@ -91,9 +91,51 @@ The widget expects a URL that returns a **JSON array of strings**:
 
 An object form is also accepted: `{ "messages": ["...", "..."] }`.
 
-Use `messages.json` in this repo as a starting point. Any static host works:
+`messages.json` already lives in this repo, so you have two ready-made ways to
+host it without leaving GitHub. To change your messages later, just edit
+`messages.json` and commit — the widget picks up the new list on its next fetch.
 
-### GitHub Gist (easiest, free)
+### Option 1 — GitHub raw URL (zero setup, already works)
+
+The file is served straight from the repo at:
+
+```
+https://raw.githubusercontent.com/jparro00/ios-widget/claude/scriptable-lockscreen-widget-jui7kx/messages.json
+```
+
+This is the **default `MESSAGES_URL`** already set in `widget.js`, so it works out
+of the box. Notes:
+
+- `raw.githubusercontent.com` serves with `Content-Type: text/plain`, but
+  Scriptable's `loadJSON()` parses it regardless — no problem.
+- GitHub's raw CDN caches for ~5 minutes, so edits take a few minutes to show up.
+- The URL pins the branch name. If you rename the branch (e.g. to `main`), update
+  the URL to match.
+
+### Option 2 — GitHub Pages (cleaner, stable URL)
+
+Pages gives you a short URL and a proper `application/json` content type.
+
+1. On GitHub, go to the repo **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+3. Set **Branch** to `claude/scriptable-lockscreen-widget-jui7kx` (or `main` if you
+   rename it) and folder to **`/ (root)`**, then **Save**.
+4. Wait ~1 minute for the first build. Your file is then at:
+
+   ```
+   https://jparro00.github.io/ios-widget/messages.json
+   ```
+
+5. Paste that into `MESSAGES_URL` in `widget.js`.
+
+> Pages only publishes the repo's default branch (or whichever branch you pick).
+> Since `messages.json` sits at the repo root, root is the correct folder.
+
+### Option 3 — Anywhere else
+
+Any static host works — the widget just needs an HTTPS URL returning the JSON array.
+
+#### GitHub Gist (separate from this repo)
 
 1. Go to <https://gist.github.com>, create a new **public** gist.
 2. Name the file `messages.json` and paste your array.
@@ -105,10 +147,10 @@ Use `messages.json` in this repo as a starting point. Any static host works:
 > Tip: the `/raw/` URL *without* a commit hash always serves the latest version, so
 > you can edit the gist later and the widget will pick up new messages.
 
-### Other options
+#### Other hosts
 
 - **Amazon S3 / Cloudflare R2:** upload `messages.json`, make it public, use its object URL.
-- **GitHub Pages / Netlify / any static host:** drop the file in and use its URL.
+- **Netlify / Vercel / any static host:** drop the file in and use its URL.
 - **Your own server:** just return the JSON array with `Content-Type: application/json`.
 
 Whatever you pick, make sure it's reachable over **HTTPS** and publicly readable.
