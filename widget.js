@@ -37,11 +37,24 @@ const CONFIG = {
   MODE: "sequential",
 
   // Text styling.
-  FONT_SIZE: 14, // rectangular / circular body font size
+  FONT_SIZE: 15, // rectangular / circular body font size
   INLINE_FONT_SIZE: 12, // accessoryInline font size
   MIN_SCALE_FACTOR: 0.7, // shrink long text to fit rather than truncating hard
   TEXT_COLOR: "#FFFFFF", // lock screen tints this monochrome anyway
   LINE_LIMIT: 3, // max lines in the rectangular family
+
+  // Frosted rectangle behind the text. false = transparent, so the text sits
+  // directly on your wallpaper and uses the full widget frame (like the
+  // calendar/weather text widgets). true = opaque rounded box for legibility.
+  USE_ACCESSORY_BACKGROUND: false,
+
+  // Whole-message styling defaults. These apply to EVERY message. You can also
+  // style individual messages (or parts of them) with inline markup in the text
+  // itself: **bold**, *italic*, or <b>…</b> / <i>…</i>. A message that is
+  // entirely one style wraps across multiple lines; a message that MIXES styles
+  // renders on a single line (WidgetKit can't wrap mixed-style runs).
+  BOLD: false, // make all text bold
+  ITALIC: true, // make all text italic (nice for quotes)
 
   // Networking.
   REQUEST_TIMEOUT_SECONDS: 8,
@@ -52,8 +65,8 @@ const CONFIG = {
     "Stay steady.",
     "One thing at a time.",
     "Breathe. Then begin.",
-    "Progress over perfection.",
-    "You've done hard things before.",
+    "Progress over **perfection**.",
+    "You've done *hard things* before.",
     "Small steps still count.",
   ],
 };
@@ -103,11 +116,34 @@ function sanitizeMessages(data) {
 // Widget rendering
 // ============================================================================
 
+/**
+ * Pick the right system font for a bold/italic combination. Scriptable has no
+ * bold-italic system helper, so bold wins when both are requested.
+ */
+function fontFor(size, bold, italic) {
+  if (bold) return Font.boldSystemFont(size);
+  if (italic) return Font.italicSystemFont(size);
+  return Font.systemFont(size);
+}
+
+/**
+ * Apply one styled run to a text element created by `add`, with the given size.
+ * Baseline BOLD/ITALIC from CONFIG combine with the run's own inline markup.
+ */
+function styleText(t, run, size, color) {
+  t.font = fontFor(size, CONFIG.BOLD || run.bold, CONFIG.ITALIC || run.italic);
+  t.textColor = color;
+}
+
 function buildWidget(message, family) {
   const widget = new ListWidget();
 
-  // Frosted background improves legibility of tinted lock-screen widgets.
-  if (typeof widget.addAccessoryWidgetBackground !== "undefined") {
+  // Frosted background: opt-in. When off, the text sits directly on the
+  // wallpaper and uses the whole widget frame.
+  if (
+    CONFIG.USE_ACCESSORY_BACKGROUND &&
+    typeof widget.addAccessoryWidgetBackground !== "undefined"
+  ) {
     widget.addAccessoryWidgetBackground = true;
   }
 
@@ -118,47 +154,67 @@ function buildWidget(message, family) {
 
   const color = new Color(CONFIG.TEXT_COLOR);
 
+  // Split the message into styled runs from inline markup (**bold**, *italic*,
+  // <b>, <i>). Uniform (single-run) messages can wrap across lines; mixed-style
+  // messages render on one horizontal line since WidgetKit can't wrap runs.
+  const runs = parseRuns(message);
+  const uniform = runs.length <= 1;
+
   if (family === "accessoryInline") {
-    // Single line rendered next to the clock; keep it terse.
-    const t = widget.addText(message);
-    t.font = Font.systemFont(CONFIG.INLINE_FONT_SIZE);
-    t.textColor = color;
-    t.lineLimit = 1;
-    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
+    // Single line next to the clock. Inline is always one line, so a run stack
+    // is safe here regardless of mixed styling.
+    renderRunRow(widget, runs, CONFIG.INLINE_FONT_SIZE, color, 1, "left");
   } else if (family === "accessoryCircular") {
-    // Tiny circular slot; center a very short snippet.
+    // Tiny circular slot; center a very short snippet (markup stripped/uniform).
     widget.setPadding(2, 2, 2, 2);
     const stack = widget.addStack();
     stack.addSpacer();
     const inner = stack.addStack();
     inner.addSpacer();
-    const t = inner.addText(message);
-    t.font = Font.systemFont(CONFIG.FONT_SIZE - 2);
-    t.textColor = color;
+    const t = inner.addText(plainText(runs));
+    styleText(t, mergedStyle(runs), CONFIG.FONT_SIZE - 3, color);
     t.lineLimit = 2;
     t.minimumScaleFactor = 0.5;
     t.centerAlignText();
     inner.addSpacer();
     stack.addSpacer();
   } else {
-    // Default: accessoryRectangular (also a safe fallback for unknown families).
-    // The slot has a fixed frame, but by default text hugs its own width. To
-    // make content span the FULL width, put the text in a horizontal stack and
-    // add a trailing spacer: the spacer eats all leftover space, forcing the
-    // stack (and thus the text's wrap width) out to the edges.
-    widget.setPadding(2, 0, 2, 0);
-    const row = widget.addStack();
-    row.layoutHorizontally();
-    const t = row.addText(message);
-    t.font = Font.systemFont(CONFIG.FONT_SIZE);
-    t.textColor = color;
-    t.lineLimit = CONFIG.LINE_LIMIT;
-    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
-    t.leftAlignText();
-    row.addSpacer(); // expand the row to the full available width
+    // Default: accessoryRectangular (also the fallback for unknown families).
+    widget.setPadding(0, 0, 0, 0);
+    if (uniform) {
+      // One style -> a single text element that wraps to fill the full frame.
+      const row = widget.addStack();
+      row.layoutHorizontally();
+      const t = row.addText(plainText(runs));
+      styleText(t, mergedStyle(runs), CONFIG.FONT_SIZE, color);
+      t.lineLimit = CONFIG.LINE_LIMIT;
+      t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
+      t.leftAlignText();
+      row.addSpacer(); // expand the row to the full available width
+    } else {
+      // Mixed styles -> one horizontal line of runs (can't wrap), scaled to fit.
+      renderRunRow(widget, runs, CONFIG.FONT_SIZE, color, 1, "left");
+    }
   }
 
   return widget;
+}
+
+/**
+ * Render an array of styled runs as a single horizontal line, then a spacer so
+ * the row expands to the full available width.
+ */
+function renderRunRow(widget, runs, size, color, lineLimit, align) {
+  const row = widget.addStack();
+  row.layoutHorizontally();
+  for (const run of runs) {
+    const t = row.addText(run.text);
+    styleText(t, run, size, color);
+    t.lineLimit = lineLimit;
+    t.minimumScaleFactor = CONFIG.MIN_SCALE_FACTOR;
+    if (align === "left") t.leftAlignText();
+  }
+  row.addSpacer();
 }
 
 // ============================================================================
@@ -245,10 +301,87 @@ function pickIndex(nowMs, count, cfg) {
 }
 
 // ----------------------------------------------------------------------------
+// Inline text markup -> styled runs (pure; no Scriptable globals).
+// ----------------------------------------------------------------------------
+
+/**
+ * Parse lightweight inline markup into an array of styled runs.
+ * Supported: **bold**, *italic*, <b>…</b>, <strong>…</strong>, <i>…</i>,
+ * <em>…</em>. `**` toggles bold, a lone `*` toggles italic; HTML tags open/close
+ * explicitly. Unknown/stray markers are treated as literal text.
+ * Always returns at least one run (possibly empty text) so callers are simple.
+ * @param {string} input
+ * @returns {Array<{text:string, bold:boolean, italic:boolean}>}
+ */
+function parseRuns(input) {
+  const s = String(input == null ? "" : input);
+  const runs = [];
+  let bold = false;
+  let italic = false;
+  let buf = "";
+  const flush = () => {
+    if (buf.length > 0) {
+      runs.push({ text: buf, bold, italic });
+      buf = "";
+    }
+  };
+  // Ordered so multi-char tokens are tested before their single-char prefixes.
+  const tags = [
+    { m: "<b>", set: () => (bold = true) },
+    { m: "</b>", set: () => (bold = false) },
+    { m: "<strong>", set: () => (bold = true) },
+    { m: "</strong>", set: () => (bold = false) },
+    { m: "<i>", set: () => (italic = true) },
+    { m: "</i>", set: () => (italic = false) },
+    { m: "<em>", set: () => (italic = true) },
+    { m: "</em>", set: () => (italic = false) },
+    { m: "**", set: () => (bold = !bold) },
+    { m: "*", set: () => (italic = !italic) },
+  ];
+  let i = 0;
+  outer: while (i < s.length) {
+    for (const tag of tags) {
+      if (s.startsWith(tag.m, i)) {
+        flush();
+        tag.set();
+        i += tag.m.length;
+        continue outer;
+      }
+    }
+    buf += s[i];
+    i += 1;
+  }
+  flush();
+  return runs.length > 0 ? runs : [{ text: "", bold: false, italic: false }];
+}
+
+/** Concatenate run texts back into a plain string (markup stripped). */
+function plainText(runs) {
+  return runs.map((r) => r.text).join("");
+}
+
+/** Collapse runs into one style: bold/italic if ANY run is bold/italic. */
+function mergedStyle(runs) {
+  return {
+    text: plainText(runs),
+    bold: runs.some((r) => r.bold),
+    italic: runs.some((r) => r.italic),
+  };
+}
+
+// ----------------------------------------------------------------------------
 // Export pure logic for Node tests; guarded so Scriptable (no `module`) ignores.
 // ----------------------------------------------------------------------------
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { pickIndex, bucketFor, hashInt, sanitizeMessages };
+  module.exports = {
+    pickIndex,
+    bucketFor,
+    hashInt,
+    sanitizeMessages,
+    parseRuns,
+    plainText,
+    mergedStyle,
+  };
 }
 
 // ----------------------------------------------------------------------------

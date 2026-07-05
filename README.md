@@ -61,11 +61,14 @@ Open the script and edit the **CONFIG** block at the top:
 
 ```js
 const CONFIG = {
-  MESSAGES_URL: "https://gist.githubusercontent.com/USERNAME/GIST_ID/raw/messages.json",
-  ROTATE_MINUTES: 15,          // how often the message advances
-  MODE: "sequential",          // "sequential" or "random"
-  FONT_SIZE: 14,
-  // ...styling...
+  MESSAGES_URL: "https://.../messages.json",
+  ROTATE_MINUTES: 15,            // how often the message advances
+  MODE: "sequential",           // "sequential" or "random"
+  FONT_SIZE: 15,
+  USE_ACCESSORY_BACKGROUND: false, // false = transparent (text on wallpaper)
+  BOLD: false,                  // make all text bold
+  ITALIC: true,                 // make all text italic
+  // ...more styling...
 };
 ```
 
@@ -191,6 +194,47 @@ time into buckets `ROTATE_MINUTES` wide (`bucket = floor(now / ROTATE_MINUTES)`)
 
 Both modes are **deterministic**: the same moment in time always yields the same
 message, which is what lets the widget be stateless.
+
+---
+
+## Appearance & text styling
+
+### Transparent vs. framed
+
+`USE_ACCESSORY_BACKGROUND` controls the box behind the text:
+
+- **`false`** (default) — no box. The text sits directly on your wallpaper and
+  uses the full widget frame, like the built-in calendar/weather text widgets.
+- **`true`** — a frosted rounded rectangle behind the text for maximum legibility.
+
+### Bold & italic
+
+Two ways to style text, and they combine:
+
+1. **Whole-widget defaults** — `BOLD` and `ITALIC` in CONFIG apply to every
+   message. `ITALIC: true` is a nice default for quotes.
+2. **Inline markup inside a message** — put the markers right in your JSON/message
+   strings:
+
+   | Write this | Renders as |
+   | --- | --- |
+   | `Progress over **perfection**.` | Progress over **perfection**. |
+   | `You've done *hard things* before.` | You've done *hard things* before. |
+   | `Focus on the <b>next right thing</b>.` | bold via HTML tag |
+   | `Stay <i>steady</i>.` | italic via HTML tag |
+
+   Supported markers: `**bold**`, `*italic*`, `<b>…</b>`, `<strong>…</strong>`,
+   `<i>…</i>`, `<em>…</em>`.
+
+**One real limitation:** iOS widgets have no attributed-string / rich-text API, so
+a message that **mixes** styles (some bold, some not) renders on a **single line**
+that shrinks to fit — it can't wrap across multiple lines. A message that is
+*entirely* one style (or plain) wraps normally across up to `LINE_LIMIT` lines. So
+for multi-line quotes, prefer whole-message styling (`ITALIC: true`) over
+mid-sentence bold.
+
+**Color note:** iOS forces lock screen widgets to a monochrome/tinted look, so
+`TEXT_COLOR` and any custom colors won't show through — only weight/italic do.
 
 ---
 

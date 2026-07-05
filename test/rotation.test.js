@@ -8,7 +8,15 @@
 // Exits non-zero if any assertion fails.
 
 const assert = require("assert");
-const { pickIndex, bucketFor, hashInt, sanitizeMessages } = require("../widget.js");
+const {
+  pickIndex,
+  bucketFor,
+  hashInt,
+  sanitizeMessages,
+  parseRuns,
+  plainText,
+  mergedStyle,
+} = require("../widget.js");
 
 let passed = 0;
 function check(name, fn) {
@@ -152,6 +160,64 @@ check("rejects non-arrays and non-string entries", () => {
   assert.deepStrictEqual(sanitizeMessages(null), []);
   assert.deepStrictEqual(sanitizeMessages(42), []);
   assert.deepStrictEqual(sanitizeMessages(["ok", 5, null, {}, "yes"]), ["ok", "yes"]);
+});
+
+console.log("parseRuns (inline markup):");
+
+check("plain text is a single unstyled run", () => {
+  assert.deepStrictEqual(parseRuns("Stay steady."), [
+    { text: "Stay steady.", bold: false, italic: false },
+  ]);
+});
+
+check("**bold** produces a bold run and strips markers", () => {
+  const runs = parseRuns("Stay **steady**.");
+  assert.deepStrictEqual(runs, [
+    { text: "Stay ", bold: false, italic: false },
+    { text: "steady", bold: true, italic: false },
+    { text: ".", bold: false, italic: false },
+  ]);
+  assert.strictEqual(plainText(runs), "Stay steady.");
+});
+
+check("*italic* produces an italic run", () => {
+  const runs = parseRuns("Be *here* now");
+  assert.deepStrictEqual(runs.map((r) => r.italic), [false, true, false]);
+  assert.strictEqual(plainText(runs), "Be here now");
+});
+
+check("HTML <b> and <i> tags style and strip", () => {
+  const runs = parseRuns("<b>Do</b> the <i>next</i> thing");
+  assert.strictEqual(plainText(runs), "Do the next thing");
+  assert.strictEqual(runs.find((r) => r.text === "Do").bold, true);
+  assert.strictEqual(runs.find((r) => r.text === "next").italic, true);
+});
+
+check("nested/overlapping bold+italic yields a run that is both", () => {
+  const runs = parseRuns("**<i>whoa</i>**");
+  assert.strictEqual(plainText(runs), "whoa");
+  assert.strictEqual(runs.length, 1);
+  assert.deepStrictEqual(
+    { bold: runs[0].bold, italic: runs[0].italic },
+    { bold: true, italic: true }
+  );
+});
+
+check("empty / nullish input returns one empty run (never throws)", () => {
+  assert.deepStrictEqual(parseRuns(""), [
+    { text: "", bold: false, italic: false },
+  ]);
+  assert.deepStrictEqual(parseRuns(null), [
+    { text: "", bold: false, italic: false },
+  ]);
+});
+
+check("mergedStyle is bold/italic if ANY run is", () => {
+  const runs = parseRuns("plain **b** and *i*");
+  const m = mergedStyle(runs);
+  assert.strictEqual(m.text, "plain b and i");
+  assert.strictEqual(m.bold, true);
+  assert.strictEqual(m.italic, true);
 });
 
 console.log("\nAll " + passed + " checks passed.");
