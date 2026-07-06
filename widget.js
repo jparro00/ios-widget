@@ -62,12 +62,14 @@ const CONFIG = {
   // Fallback shown if the network fails or the URL returns nothing usable.
   // The widget must NEVER render blank or an error, so keep this non-empty.
   DEFAULT_MESSAGES: [
-    "Stay steady.",
-    "One thing at a time.",
-    "Breathe. Then begin.",
-    "Progress over **perfection**.",
-    "You've done *hard things* before.",
-    "Small steps still count.",
+    "The unexamined life is not worth living. — Socrates",
+    "I think, therefore I am. — René Descartes",
+    "That which does not kill us makes us stronger. — Nietzsche",
+    "You have power over your mind, not outside events. — Marcus Aurelius",
+    "Happiness depends upon ourselves. — Aristotle",
+    "The journey of a thousand miles begins with a single step. — Lao Tzu",
+    "Man is condemned to be free. — Jean-Paul Sartre",
+    "Nothing can bring you peace but yourself. — Ralph Waldo Emerson",
   ],
 };
 
