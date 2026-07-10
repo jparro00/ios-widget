@@ -62,14 +62,14 @@ const CONFIG = {
   // Fallback shown if the network fails or the URL returns nothing usable.
   // The widget must NEVER render blank or an error, so keep this non-empty.
   DEFAULT_MESSAGES: [
-    "The unexamined life is not worth living. — Socrates",
-    "I think, therefore I am. — René Descartes",
-    "That which does not kill us makes us stronger. — Nietzsche",
-    "You have power over your mind, not outside events. — Marcus Aurelius",
-    "Happiness depends upon ourselves. — Aristotle",
-    "The journey of a thousand miles begins with a single step. — Lao Tzu",
-    "Man is condemned to be free. — Jean-Paul Sartre",
-    "Nothing can bring you peace but yourself. — Ralph Waldo Emerson",
+    "Imagination is more important than knowledge. — Albert Einstein",
+    "We are made of star-stuff. — Carl Sagan",
+    "Simplicity is the ultimate sophistication. — Leonardo da Vinci",
+    "Stay hungry, stay foolish. — Steve Jobs",
+    "It always seems impossible until it's done. — Nelson Mandela",
+    "Be yourself; everyone else is already taken. — Oscar Wilde",
+    "Life is either a daring adventure or nothing at all. — Helen Keller",
+    "What you seek is seeking you. — Rumi",
   ],
 };
 
