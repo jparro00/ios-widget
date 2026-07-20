@@ -62,14 +62,14 @@ const CONFIG = {
   // Fallback shown if the network fails or the URL returns nothing usable.
   // The widget must NEVER render blank or an error, so keep this non-empty.
   DEFAULT_MESSAGES: [
-    "Imagination is more important than knowledge. — Albert Einstein",
-    "We are made of star-stuff. — Carl Sagan",
-    "Simplicity is the ultimate sophistication. — Leonardo da Vinci",
-    "Stay hungry, stay foolish. — Steve Jobs",
-    "It always seems impossible until it's done. — Nelson Mandela",
-    "Be yourself; everyone else is already taken. — Oscar Wilde",
-    "Life is either a daring adventure or nothing at all. — Helen Keller",
-    "What you seek is seeking you. — Rumi",
+    "The only way to do great work is to love what you do. — Steve Jobs",
+    "In the middle of difficulty lies opportunity. — Albert Einstein",
+    "Not all those who wander are lost. — J.R.R. Tolkien",
+    "The obstacle is the way. — Marcus Aurelius",
+    "It is never too late to be what you might have been. — George Eliot",
+    "Follow your bliss. — Joseph Campbell",
+    "Do one thing every day that scares you. — Eleanor Roosevelt",
+    "Creativity takes courage. — Henri Matisse",
   ],
 };
 
