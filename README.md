@@ -62,7 +62,7 @@ Open the script and edit the **CONFIG** block at the top:
 ```js
 const CONFIG = {
   MESSAGES_URL: "https://.../messages.json",
-  ROTATE_MINUTES: 15,            // how often the message advances
+  ROTATE_MINUTES: 1440,         // how often the message advances (1440 = daily)
   MODE: "sequential",           // "sequential" or "random"
   FONT_SIZE: 15,
   USE_ACCESSORY_BACKGROUND: false, // false = transparent (text on wallpaper)
@@ -183,17 +183,22 @@ The widget now shows a message and advances over time as iOS refreshes it.
 
 ## Rotation modes
 
-`MODE` in CONFIG controls how the current message is chosen. The script divides
-time into buckets `ROTATE_MINUTES` wide (`bucket = floor(now / ROTATE_MINUTES)`):
+`ROTATE_MINUTES` sets how long each message stays up before advancing. The
+default `1440` means **one message per day**, rolling over at your **local
+midnight**. Other handy values: `60` (hourly), `15` (every 15 minutes).
+
+`MODE` controls how the current message is chosen. The script divides time into
+buckets `ROTATE_MINUTES` wide (`bucket = floor(localNow / ROTATE_MINUTES)`):
 
 - **`"sequential"`** — walks the list in order, one message per bucket, wrapping
-  around at the end. Predictable and orderly.
+  around at the end. With the daily default, you get the next quote each morning.
 - **`"random"`** — hashes the bucket number to pick a pseudo-random message. It's
-  **stable within a bucket** (same message all 15 minutes) but jumps around between
-  buckets. No persistent storage needed because the bucket number is the seed.
+  **stable within a bucket** (same message all day, for daily) but jumps around
+  between buckets. No persistent storage needed because the bucket is the seed.
 
 Both modes are **deterministic**: the same moment in time always yields the same
-message, which is what lets the widget be stateless.
+message, which is what lets the widget be stateless. The script buckets by
+*local* time, so a daily rotation flips at your midnight, not UTC.
 
 ---
 
@@ -246,23 +251,27 @@ iOS — not this script — decides when a lock screen widget actually re-render
 uses a system refresh budget and may update less often than `ROTATE_MINUTES`,
 especially in Low Power Mode or when the phone is idle. The script:
 
-- sets `widget.refreshAfterDate = now + ROTATE_MINUTES` as a **hint** to iOS, and
+- sets `widget.refreshAfterDate` to the **start of the next bucket** (e.g. the
+  next local midnight, for the daily default) as a **hint** to iOS, and
 - is **correct at whatever time it runs** (message derived from the clock),
 
-but you should treat rotation as "roughly every `ROTATE_MINUTES`," not exact.
+so even if iOS refreshes at odd times, you'll still see the *right* message for
+the current bucket. For daily rotation this is very forgiving: the message is the
+same all day, so iOS only has to refresh once sometime after midnight to catch up.
 
-### Optional: nudge refreshes with a Shortcuts automation
+### Optional: nudge the daily change with a Shortcuts automation
 
-You can gently encourage more frequent updates by running the script on a schedule.
-This does **not** override iOS's budget, but running the script can prompt a refresh.
+iOS usually refreshes on its own, but if you want to encourage the new quote to
+appear promptly after midnight, run the script on a schedule. This does **not**
+override iOS's budget, but running the script can prompt a refresh.
 
 1. Open the **Shortcuts** app → **Automation** tab → **＋** → **Create Personal Automation**.
-2. Choose **Time of Day** (or **App**, etc.), pick a schedule (e.g. every hour), tap **Next**.
+2. Choose **Time of Day**, set it to just after midnight (e.g. **12:01 AM**,
+   **Daily**), tap **Next**.
 3. Add action **Run Script** (from Scriptable) and select **Rotating Messages**.
 4. Tap **Next**, turn **off** *Ask Before Running*, and **Done**.
 
-Note: Time-of-Day automations fire at a single time; for multiple times per day,
-create several automations. This is a best-effort nudge, not a guarantee.
+This is a best-effort nudge, not a guarantee.
 
 ---
 
@@ -280,6 +289,8 @@ node test/rotation.test.js
 
 The test verifies that:
 - buckets advance every `ROTATE_MINUTES` and are stable within a window,
+- **daily** rotation (1440) holds one message for a full day, then advances once,
+- `nextBoundaryMs` returns the next bucket start (used for the refresh hint),
 - **sequential** mode walks the list in order and wraps,
 - **random** mode is deterministic and stable within a bucket but varies across buckets,
 - the chosen index is always in range `[0, count)` for both modes,

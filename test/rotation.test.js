@@ -11,6 +11,7 @@ const assert = require("assert");
 const {
   pickIndex,
   bucketFor,
+  nextBoundaryMs,
   hashInt,
   sanitizeMessages,
   parseRuns,
@@ -70,6 +71,44 @@ check("sequential is stable within one bucket", () => {
   const first = pickIndex(base, 7, cfg);
   for (let m = 0; m < 15; m++) {
     assert.strictEqual(pickIndex(base + m * MIN, 7, cfg), first);
+  }
+});
+
+console.log("daily rotation (ROTATE_MINUTES = 1440):");
+
+const DAY = 24 * 60 * MIN;
+
+check("index is constant for a whole day, then advances once", () => {
+  const cfg = { ROTATE_MINUTES: 1440, MODE: "sequential" };
+  const day0 = 5 * DAY; // start of some day
+  // Stable all day: sample every hour.
+  const first = pickIndex(day0, 7, cfg);
+  for (let h = 0; h < 24; h++) {
+    assert.strictEqual(pickIndex(day0 + h * 60 * MIN, 7, cfg), first);
+  }
+  // Next day advances by exactly one.
+  assert.strictEqual(pickIndex(day0 + DAY, 7, cfg), (first + 1) % 7);
+});
+
+console.log("nextBoundaryMs:");
+
+check("returns the start of the next bucket", () => {
+  assert.strictEqual(nextBoundaryMs(0, 15), 15 * MIN);
+  assert.strictEqual(nextBoundaryMs(14 * MIN, 15), 15 * MIN);
+  assert.strictEqual(nextBoundaryMs(15 * MIN, 15), 30 * MIN);
+});
+
+check("for daily rotation, boundary is the next midnight-of-bucket", () => {
+  const day0 = 10 * DAY;
+  assert.strictEqual(nextBoundaryMs(day0, 1440), 11 * DAY);
+  assert.strictEqual(nextBoundaryMs(day0 + 12 * 60 * MIN, 1440), 11 * DAY);
+});
+
+check("boundary is always strictly in the future", () => {
+  for (const rotate of [15, 60, 1440]) {
+    for (let t = 0; t < 5_000_000; t += 123457) {
+      assert.ok(nextBoundaryMs(t, rotate) > t);
+    }
   }
 });
 

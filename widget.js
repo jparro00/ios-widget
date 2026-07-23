@@ -27,9 +27,10 @@ const CONFIG = {
     "https://raw.githubusercontent.com/jparro00/ios-widget/claude/scriptable-lockscreen-widget-jui7kx/messages.json",
 
   // How often (in minutes) the displayed message advances to the next one.
-  // iOS decides *when* to actually refresh; this only controls which message
-  // maps to a given moment in time.
-  ROTATE_MINUTES: 15,
+  // 1440 = once per day (rolls over at LOCAL midnight). Other handy values:
+  // 60 = hourly, 15 = every 15 min. iOS decides *when* to actually refresh;
+  // this only controls which message maps to a given moment in time.
+  ROTATE_MINUTES: 1440,
 
   // "sequential" -> walk through the list in order, one per time bucket.
   // "random"     -> pseudo-random pick, but STABLE within a single time bucket
@@ -137,7 +138,7 @@ function styleText(t, run, size, color) {
   t.textColor = color;
 }
 
-function buildWidget(message, family) {
+function buildWidget(message, family, refreshAfterDate) {
   const widget = new ListWidget();
 
   // Frosted background: opt-in. When off, the text sits directly on the
@@ -149,10 +150,9 @@ function buildWidget(message, family) {
     widget.addAccessoryWidgetBackground = true;
   }
 
-  // Nudge iOS about when the content next changes. Timing is only a hint.
-  widget.refreshAfterDate = new Date(
-    Date.now() + CONFIG.ROTATE_MINUTES * 60 * 1000
-  );
+  // Nudge iOS to refresh when the content next changes (the start of the next
+  // rotation bucket, e.g. next local midnight for daily). Timing is only a hint.
+  widget.refreshAfterDate = refreshAfterDate;
 
   const color = new Color(CONFIG.TEXT_COLOR);
 
@@ -209,13 +209,25 @@ function buildWidget(message, family) {
 async function main() {
   const messages = await loadMessages();
 
-  // Deterministically choose the message from the current time.
-  const index = pickIndex(Date.now(), messages.length, CONFIG);
+  // Bucket by LOCAL time so a daily rotation flips at local midnight rather than
+  // UTC. getTimezoneOffset() is (UTC - local) in minutes, so subtracting it from
+  // the real time gives a "local" clock we can bucket; we add it back to convert
+  // a bucket boundary into a real refresh timestamp.
+  const offsetMs = new Date().getTimezoneOffset() * 60 * 1000;
+  const nowLocal = Date.now() - offsetMs;
+
+  // Deterministically choose the message from the current (local) time.
+  const index = pickIndex(nowLocal, messages.length, CONFIG);
   const message = messages[index];
+
+  // Hint iOS to refresh at the start of the next bucket (e.g. next midnight).
+  const refreshAfterDate = new Date(
+    nextBoundaryMs(nowLocal, CONFIG.ROTATE_MINUTES) + offsetMs
+  );
 
   // The family iOS is rendering (only meaningful inside a real widget).
   const family = config.widgetFamily || "accessoryRectangular";
-  const widget = buildWidget(message, family);
+  const widget = buildWidget(message, family, refreshAfterDate);
 
   if (config.runsInWidget) {
     // Running as an actual lock-screen widget.
@@ -248,6 +260,18 @@ async function main() {
 function bucketFor(nowMs, rotateMinutes) {
   const windowMs = Math.max(1, rotateMinutes) * 60 * 1000;
   return Math.floor(nowMs / windowMs);
+}
+
+/**
+ * Epoch ms at the START of the bucket AFTER the one containing `nowMs`.
+ * Used as the iOS refresh hint — the next moment the message changes.
+ * @param {number} nowMs
+ * @param {number} rotateMinutes
+ * @returns {number}
+ */
+function nextBoundaryMs(nowMs, rotateMinutes) {
+  const windowMs = Math.max(1, rotateMinutes) * 60 * 1000;
+  return (bucketFor(nowMs, rotateMinutes) + 1) * windowMs;
 }
 
 /**
@@ -361,6 +385,7 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     pickIndex,
     bucketFor,
+    nextBoundaryMs,
     hashInt,
     sanitizeMessages,
     parseRuns,
