@@ -63,14 +63,14 @@ const CONFIG = {
   // Fallback shown if the network fails or the URL returns nothing usable.
   // The widget must NEVER render blank or an error, so keep this non-empty.
   DEFAULT_MESSAGES: [
-    "The only way to do great work is to love what you do. — Steve Jobs",
-    "In the middle of difficulty lies opportunity. — Albert Einstein",
-    "Not all those who wander are lost. — J.R.R. Tolkien",
-    "The obstacle is the way. — Marcus Aurelius",
-    "It is never too late to be what you might have been. — George Eliot",
-    "Follow your bliss. — Joseph Campbell",
-    "Do one thing every day that scares you. — Eleanor Roosevelt",
-    "Creativity takes courage. — Henri Matisse",
+    "What is essential is invisible to the eye. — Antoine de Saint-Exupéry",
+    "All we have to decide is what to do with the time that is given us. — J.R.R. Tolkien",
+    "Do not go gentle into that good night. — Dylan Thomas",
+    "Look up at the stars and not down at your feet. — Stephen Hawking",
+    "The time is always right to do what is right. — Martin Luther King Jr.",
+    "The best way to predict the future is to invent it. — Alan Kay",
+    "One must imagine Sisyphus happy. — Albert Camus",
+    "To be, or not to be: that is the question. — William Shakespeare",
   ],
 };
 
